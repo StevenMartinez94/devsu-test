@@ -1,0 +1,34 @@
+# Python
+*.log
+*.pot
+*.pyc
+__pycache__/
+
+# Django DB
+db.sqlite3
+
+# Environment variables
+.env
+
+# Terraform
+terraform/
+
+# Docker
+docker/
+.dockerignore
+Dockerfile
+docker-compose.yml
+
+# Documentation
+README.md
+
+# Kubernetes
+k8s/
+
+# Git
+.git/
+.gitignore
+
+# Pipenv
+Pipfile
+Pipfile.lock
