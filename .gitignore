@@ -1,0 +1,19 @@
+# Python
+*.log
+*.pot
+*.pyc
+__pycache__/
+
+# Django DB
+db.sqlite3
+
+# Environment variables
+.env
+
+# Terraform
+.terraform*
+*.tfstate*
+*.tfvars
+
+# Kubernetes
+secret.yaml
