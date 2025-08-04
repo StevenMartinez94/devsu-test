@@ -1,0 +1,54 @@
+---
+name: Deploy to Kubernetes
+on:
+  workflow_run:
+    workflows:
+      - Docker Build and Push
+      - Vulnerability Scan
+    types:
+      - completed
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      - name: Get tag name from Git
+        run: |
+          # Get the commit SHA from the workflow run
+          COMMIT_SHA="${{ github.event.workflow_run.head_sha }}"
+          echo "Commit SHA: $COMMIT_SHA"
+
+          # Fetch all tags to ensure we have them locally
+          git fetch --tags
+
+          # Check if this commit has a tag
+          TAG_NAME=$(git tag --points-at $COMMIT_SHA | grep '^v' | head -n1)
+
+          if [ -z "$TAG_NAME" ]; then
+            echo "No version tag found for commit, using branch name"
+            TAG_NAME="${{ github.event.workflow_run.head_branch }}"
+          fi
+
+          echo "TAG_NAME=$TAG_NAME" >> $GITHUB_ENV
+          echo "Using tag: $TAG_NAME"
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: latest
+      - name: Set up kubeconfig from secret
+        run: |
+          echo "${{ secrets.KUBECONFIG_B64 }}" | base64 --decode > kubeconfig
+      - name: Set image variables
+        run: |
+          REPO=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+          IMAGE_NAME="ghcr.io/$REPO"
+          echo "IMAGE_NAME=$IMAGE_NAME" >> $GITHUB_ENV
+      - name: Patch image tag in manifests
+        run: |
+          find ./k8s/manifests -type f -name "*.yaml" -exec \
+            sed -i "s|ghcr.io/.*/.*:.*|${IMAGE_NAME}:${TAG_NAME}|g" {} +
+      - name: Apply Kubernetes manifests
+        run: |
+          kubectl --kubeconfig=$PWD/kubeconfig apply -f ./k8s/manifests
+          rm -f $PWD/kubeconfig
